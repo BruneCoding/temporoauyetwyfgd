@@ -155,182 +155,195 @@
 
     <script>
         let db;
-        let loggedInUser = null;
+let loggedInUser = null;
 
-        // Open IndexedDB
-        function openDB() {
-            let request = indexedDB.open("AccountDB", 1);
+// Open IndexedDB
+function openDB() {
+    let request = indexedDB.open("AccountDB", 1);
 
-            request.onupgradeneeded = function(event) {
-                db = event.target.result;
-                if (!db.objectStoreNames.contains("accounts")) {
-                    db.createObjectStore("accounts", { keyPath: "username" });
-                }
-                if (!db.objectStoreNames.contains("transactions")) {
-                    db.createObjectStore("transactions", { autoIncrement: true });
-                }
-
-                // Adding placeholder accounts
-                let transaction = event.target.transaction;
-                let store = transaction.objectStore("accounts");
-                store.add({ username: "user1", password: "pass1", points: 50 });
-                store.add({ username: "user2", password: "pass2", points: 50 });
-                store.add({ username: "user3", password: "pass3", points: 50 });
-            };
-
-            request.onsuccess = function(event) {
-                db = event.target.result;
-            };
-
-            request.onerror = function(event) {
-                console.error("Database error: " + event.target.errorCode);
-            };
+    request.onupgradeneeded = function(event) {
+        db = event.target.result;
+        if (!db.objectStoreNames.contains("accounts")) {
+            db.createObjectStore("accounts", { keyPath: "username" });
+        }
+        if (!db.objectStoreNames.contains("transactions")) {
+            db.createObjectStore("transactions", { autoIncrement: true });
         }
 
-        // Create Account
-        function createAccount() {
-            let username = document.getElementById("new-username").value;
-            let password = document.getElementById("new-password").value;
+        // Adding placeholder accounts
+        let transaction = event.target.transaction;
+        let store = transaction.objectStore("accounts");
+        store.add({ username: "JudeC", password: "1", points: 500 });
+        store.add({ username: "Hello", password: "2", points: 200 });
+        store.add({ username: "SomeoneEsle", password: "3", points: 10 });
+    };
 
-            let transaction = db.transaction(["accounts"], "readwrite");
-            let store = transaction.objectStore("accounts");
+    request.onsuccess = function(event) {
+        db = event.target.result;
+    };
 
-            let request = store.add({ username: username, password: password, points: 50 });
+    request.onerror = function(event) {
+        console.error("Database error: " + event.target.errorCode);
+    };
+}
 
-            request.onsuccess = function() {
-                alert("Account created successfully");
-            };
+// Create Account
+function createAccount() {
+    let username = document.getElementById("new-username").value;
+    let password = document.getElementById("new-password").value;
 
-            request.onerror = function() {
-                alert("Error creating account");
-            };
+    // Validate input
+    if (!username || !password) {
+        alert("Username and password cannot be empty.");
+        return;
+    }
+
+    let transaction = db.transaction(["accounts"], "readwrite");
+    let store = transaction.objectStore("accounts");
+
+    let request = store.add({ username: username, password: password, points: 50 });
+
+    request.onsuccess = function() {
+        alert("Account created successfully");
+    };
+
+    request.onerror = function() {
+        alert("Error creating account");
+    };
+}
+
+// Verify Account
+function verifyAccount(username, password, callback) {
+    let transaction = db.transaction(["accounts"]);
+    let store = transaction.objectStore("accounts");
+
+    let request = store.get(username);
+
+    request.onsuccess = function(event) {
+        let account = event.target.result;
+        if (account && account.password === password) {
+            callback(true, account);
+        } else {
+            callback(false);
         }
+    };
 
-        // Verify Account
-        function verifyAccount(username, password, callback) {
-            let transaction = db.transaction(["accounts"]);
-            let store = transaction.objectStore("accounts");
+    request.onerror = function() {
+        callback(false);
+    };
+}
 
-            let request = store.get(username);
+// Login
+function login() {
+    let username = document.getElementById("login-username").value;
+    let password = document.getElementById("login-password").value;
 
-            request.onsuccess = function(event) {
-                let account = event.target.result;
-                if (account && account.password === password) {
-                    callback(true, account);
-                } else {
-                    callback(false);
-                }
-            };
-
-            request.onerror = function() {
-                callback(false);
-            };
+    verifyAccount(username, password, function(success, account) {
+        if (success) {
+            loggedInUser = username;
+            document.getElementById("logged-in-user").innerText = loggedInUser;
+            document.getElementById("points-balance").innerText = account.points;
+            document.getElementById("login-form").style.display = "none";
+            document.getElementById("create-account-form").style.display = "none";
+            document.getElementById("menu").style.display = "block";
+        } else {
+            alert("Invalid credentials");
         }
+    });
+}
 
-        // Login
-        function login() {
-            let username = document.getElementById("login-username").value;
-            let password = document.getElementById("login-password").value;
+// Logout
+function logout() {
+    loggedInUser = null;
+    document.getElementById("menu").style.display = "none";
+    document.getElementById("transfer-form").style.display = "none";
+    document.getElementById("login-form").style.display = "block";
+}
 
-            verifyAccount(username, password, function(success, account) {
-                if (success) {
-                    loggedInUser = username;
-                    document.getElementById("logged-in-user").innerText = loggedInUser;
-                    document.getElementById("points-balance").innerText = account.points;
-                    document.getElementById("login-form").style.display = "none";
-                    document.getElementById("create-account-form").style.display = "none";
-                    document.getElementById("menu").style.display = "block";
-                } else {
-                    alert("Invalid credentials");
-                }
-            });
-        }
+// Show Transfer Form
+function showTransferForm() {
+    document.getElementById("transfer-form").style.display = "block";
+}
 
-        // Logout
-        function logout() {
-            loggedInUser = null;
-            document.getElementById("menu").style.display = "none";
-            document.getElementById("transfer-form").style.display = "none";
-            document.getElementById("login-form").style.display = "block";
-        }
+// Transfer Points
+function transferPoints() {
+    let toUsername = document.getElementById("to-username").value;
+    let amount = parseInt(document.getElementById("amount").value);
 
-        // Show Transfer Form
-        function showTransferForm() {
-            document.getElementById("transfer-form").style.display = "block";
-        }
+    // Validate amount
+    if (isNaN(amount) || amount <= 0) {
+        alert("Amount must be a positive number.");
+        return;
+    }
 
-        // Transfer Points
-        function transferPoints() {
-            let toUsername = document.getElementById("to-username").value;
-            let amount = parseInt(document.getElementById("amount").value);
+    let transaction = db.transaction(["accounts"], "readwrite");
+    let store = transaction.objectStore("accounts");
 
-            let transaction = db.transaction(["accounts"], "readwrite");
-            let store = transaction.objectStore("accounts");
+    let fromRequest = store.get(loggedInUser);
+    let toRequest = store.get(toUsername);
 
-            let fromRequest = store.get(loggedInUser);
-            let toRequest = store.get(toUsername);
+    fromRequest.onsuccess = function(event) {
+        let fromAccount = event.target.result;
 
-            fromRequest.onsuccess = function(event) {
-                let fromAccount = event.target.result;
+        if (fromAccount.points >= amount) {
+            toRequest.onsuccess = function(event) {
+                let toAccount = event.target.result;
 
-                if (fromAccount.points >= amount) {
-                    toRequest.onsuccess = function(event) {
-                        let toAccount = event.target.result;
+                if (toAccount) {
+                    fromAccount.points -= amount;
+                    toAccount.points += amount;
 
-                        if (toAccount) {
-                            fromAccount.points -= amount;
-                            toAccount.points += amount;
+                    let updateFrom = store.put(fromAccount);
+                    let updateTo = store.put(toAccount);
 
-                            let updateFrom = store.put(fromAccount);
-                            let updateTo = store.put(toAccount);
+                    updateFrom.onsuccess = updateTo.onsuccess = function() {
+                        logTransaction(loggedInUser, toUsername, amount);
+                        document.getElementById("points-balance").innerText = fromAccount.points;
+                        alert("Transfer successful");
+                    };
 
-                            updateFrom.onsuccess = updateTo.onsuccess = function() {
-                                logTransaction(loggedInUser, toUsername, amount);
-                                document.getElementById("points-balance").innerText = fromAccount.points;
-                                alert("Transfer successful");
-                            };
-
-                            updateFrom.onerror = updateTo.onerror = function() {
-                                alert("Error updating accounts");
-                            };
-                        } else {
-                            alert("Recipient account not found");
-                        }
+                    updateFrom.onerror = updateTo.onerror = function() {
+                        alert("Error updating accounts");
                     };
                 } else {
-                    alert("Insufficient points");
+                    alert("Recipient account not found");
                 }
             };
-
-            fromRequest.onerror = toRequest.onerror = function() {
-                alert("Error retrieving accounts");
-            };
+        } else {
+            alert("Insufficient points");
         }
+    };
 
-        // Log Transaction
-        function logTransaction(fromUser, toUser, amount) {
-            let transaction = db.transaction(["transactions"], "readwrite");
-            let store = transaction.objectStore("transactions");
+    fromRequest.onerror = toRequest.onerror = function() {
+        alert("Error retrieving accounts");
+    };
+}
 
-            let request = store.add({ from: fromUser, to: toUser, amount: amount, date: new Date() });
+// Log Transaction
+function logTransaction(fromUser, toUser, amount) {
+    let transaction = db.transaction(["transactions"], "readwrite");
+    let store = transaction.objectStore("transactions");
 
-            request.onsuccess = function() {
-                console.log("Transaction logged");
-            };
+    let request = store.add({ from: fromUser, to: toUser, amount: amount, date: new Date() });
 
-            request.onerror = function() {
-                console.error("Error logging transaction");
-            };
-        }
+    request.onsuccess = function() {
+        console.log("Transaction logged");
+    };
 
-        openDB();
-      
-      function toCreate() {
-        var login = document.querySelector('login-form');
-        var create = document.querySelector('#create-account-form');
-        create.style.display = "block";
-        login.style.display = "none";
-      }
+    request.onerror = function() {
+        console.error("Error logging transaction");
+    };
+}
+
+openDB();
+
+function toCreate() {
+    var login = document.querySelector('login-form');
+    var create = document.querySelector('#create-account-form');
+    create.style.display = "block";
+    login.style.display = "none";
+}
+
     </script>
 </body>
 </html>
