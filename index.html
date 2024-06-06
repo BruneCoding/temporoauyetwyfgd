@@ -325,8 +325,11 @@
 
         openDB();
       
-      function gotoCreate() {
-        var create = document.querySelector('#')
+      function toCreate() {
+        var login = document.querySelector('login-form');
+        var create = document.querySelector('#create-account-form');
+        create.style.display = "block";
+        login.style.display = "none";
       }
     </script>
 </body>
