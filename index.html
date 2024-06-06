@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Management with IndexedDB</title>
+</head>
+  <Style>
+    
+    body {
+      background: #1a1625;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 20px;
+      color: #ffffe5;
+      font-family: "Helvetica", cursive;
+      font-size: 20px;
+    }
+    
+    input {
+      padding: 10px;
+      margin-top: -5px;
+      margin-bottom: 5px; 
+      background: #2f2b3a;
+      border: 1px solid #feeade;
+      border-radius: 5px;
+      font-size: 17.5px;
+      color: rgba(254,234,222,1);
+      transition: all 0.15s ease-in-out;
+      box-shadow: 0 0 2px white;
+    }
+    
+    input::placeholder {
+      color: rgba(254,234,222,0.75);
+      background: #2f2b3a;
+    }
+    
+    input:hover {
+      transform: scale(1.005);
+      box-shadow: 0 0 7px white;
+    }
+    
+    
+    #create-account-form {
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      min-width: 800px;
+      background: #2f2b3a;
+      position: absolute;
+      z-index: 2;
+      display: none;
+      top: 50px;
+    }
+    
+    h2 {
+      margin-top: 15px;
+      margin-bottom: -5px;
+      font-weight: bold;
+      margin: 0 auto;
+    }
+    
+    h3 {
+      font-size: 20px;
+      margin-top: 20px;
+      margin-bottom: 10px;
+    }
+    
+    #login-form {
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      background:#2f2b3a;
+      position: absolute;
+      z-index: -1;
+      top: 50px;
+    }
+    
+    #menu {
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      min-width: 800px;
+      background: #2f2b3a;
+        margin: 5px;
+    }
+    
+    #transfer-form {
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      min-width: 800px;
+      background:
+    }
+    
+    
+    
+    #logged-in-user {
+      
+    }
+    
+    #switchtoCreate {
+      padding: 10px 20px;
+      border-radius: 10px;
+      background: #ba9ffb;
+      color: #f4f4eb;
+      transition: all 0.3s ease-in-out;
+      font-size: 15px;
+    }
+    
+    #switchtoCreate:hover {
+      border: 2px dashed #baa0fb;
+      border-radius: 5px;
+      background: transparent;
+      transform: scale(1.05) rotate(1deg) translateY(-0.15vh);
+      font-family: "Roboto", cursive;
+    }
+    
+    </style>
+<body>
+    <div id="create-account-form">
+        <h2>Create Account</h2>
+        <input type="text" id="new-username" placeholder="Username">
+        <input type="password" id="new-password" placeholder="Password">
+        <button onclick="createAccount()">Create Account</button>
+    </div>
+
+    <div id="login-form">
+        <h2>Login</h2>
+  <h3> Username </h3>
+        <input type="text" id="login-username" placeholder="Username">
+  <h3> Password </h3>
+        <input type="password" id="login-password" placeholder="Password">
+        <button onclick="login()" id="loginButton">Login</button>
+      <h3 id="dont">Dont Have an Account? <button onclick="toCreate()" id="switchtoCreate">Create One.</button></h3>
+    </div>
+
+    <div id="menu" style="display:none;">
+        <h2>Menu</h2>
+        <p>Logged in as: <span id="logged-in-user"></span></p>
+        <p>Points: <span id="points-balance"></span></p>
+        <button onclick="showTransferForm()">Transfer Points</button>
+        <button onclick="logout()">Logout</button>
+    </div>
+
+    <div id="transfer-form" style="display:none;">
+        <h2>Transfer Points</h2>
+        <input type="text" id="to-username" placeholder="To Username">
+        <input type="number" id="amount" placeholder="Amount">
+        <button onclick="transferPoints()">Transfer</button>
+    </div>
+
+    <script>
+        let db;
+        let loggedInUser = null;
+
+        // Open IndexedDB
+        function openDB() {
+            let request = indexedDB.open("AccountDB", 1);
+
+            request.onupgradeneeded = function(event) {
+                db = event.target.result;
+                if (!db.objectStoreNames.contains("accounts")) {
+                    db.createObjectStore("accounts", { keyPath: "username" });
+                }
+                if (!db.objectStoreNames.contains("transactions")) {
+                    db.createObjectStore("transactions", { autoIncrement: true });
+                }
+
+                // Adding placeholder accounts
+                let transaction = event.target.transaction;
+                let store = transaction.objectStore("accounts");
+                store.add({ username: "user1", password: "pass1", points: 50 });
+                store.add({ username: "user2", password: "pass2", points: 50 });
+                store.add({ username: "user3", password: "pass3", points: 50 });
+            };
+
+            request.onsuccess = function(event) {
+                db = event.target.result;
+            };
+
+            request.onerror = function(event) {
+                console.error("Database error: " + event.target.errorCode);
+            };
+        }
+
+        // Create Account
+        function createAccount() {
+            let username = document.getElementById("new-username").value;
+            let password = document.getElementById("new-password").value;
+
+            let transaction = db.transaction(["accounts"], "readwrite");
+            let store = transaction.objectStore("accounts");
+
+            let request = store.add({ username: username, password: password, points: 50 });
+
+            request.onsuccess = function() {
+                alert("Account created successfully");
+            };
+
+            request.onerror = function() {
+                alert("Error creating account");
+            };
+        }
+
+        // Verify Account
+        function verifyAccount(username, password, callback) {
+            let transaction = db.transaction(["accounts"]);
+            let store = transaction.objectStore("accounts");
+
+            let request = store.get(username);
+
+            request.onsuccess = function(event) {
+                let account = event.target.result;
+                if (account && account.password === password) {
+                    callback(true, account);
+                } else {
+                    callback(false);
+                }
+            };
+
+            request.onerror = function() {
+                callback(false);
+            };
+        }
+
+        // Login
+        function login() {
+            let username = document.getElementById("login-username").value;
+            let password = document.getElementById("login-password").value;
+
+            verifyAccount(username, password, function(success, account) {
+                if (success) {
+                    loggedInUser = username;
+                    document.getElementById("logged-in-user").innerText = loggedInUser;
+                    document.getElementById("points-balance").innerText = account.points;
+                    document.getElementById("login-form").style.display = "none";
+                    document.getElementById("create-account-form").style.display = "none";
+                    document.getElementById("menu").style.display = "block";
+                } else {
+                    alert("Invalid credentials");
+                }
+            });
+        }
+
+        // Logout
+        function logout() {
+            loggedInUser = null;
+            document.getElementById("menu").style.display = "none";
+            document.getElementById("transfer-form").style.display = "none";
+            document.getElementById("login-form").style.display = "block";
+        }
+
+        // Show Transfer Form
+        function showTransferForm() {
+            document.getElementById("transfer-form").style.display = "block";
+        }
+
+        // Transfer Points
+        function transferPoints() {
+            let toUsername = document.getElementById("to-username").value;
+            let amount = parseInt(document.getElementById("amount").value);
+
+            let transaction = db.transaction(["accounts"], "readwrite");
+            let store = transaction.objectStore("accounts");
+
+            let fromRequest = store.get(loggedInUser);
+            let toRequest = store.get(toUsername);
+
+            fromRequest.onsuccess = function(event) {
+                let fromAccount = event.target.result;
+
+                if (fromAccount.points >= amount) {
+                    toRequest.onsuccess = function(event) {
+                        let toAccount = event.target.result;
+
+                        if (toAccount) {
+                            fromAccount.points -= amount;
+                            toAccount.points += amount;
+
+                            let updateFrom = store.put(fromAccount);
+                            let updateTo = store.put(toAccount);
+
+                            updateFrom.onsuccess = updateTo.onsuccess = function() {
+                                logTransaction(loggedInUser, toUsername, amount);
+                                document.getElementById("points-balance").innerText = fromAccount.points;
+                                alert("Transfer successful");
+                            };
+
+                            updateFrom.onerror = updateTo.onerror = function() {
+                                alert("Error updating accounts");
+                            };
+                        } else {
+                            alert("Recipient account not found");
+                        }
+                    };
+                } else {
+                    alert("Insufficient points");
+                }
+            };
+
+            fromRequest.onerror = toRequest.onerror = function() {
+                alert("Error retrieving accounts");
+            };
+        }
+
+        // Log Transaction
+        function logTransaction(fromUser, toUser, amount) {
+            let transaction = db.transaction(["transactions"], "readwrite");
+            let store = transaction.objectStore("transactions");
+
+            let request = store.add({ from: fromUser, to: toUser, amount: amount, date: new Date() });
+
+            request.onsuccess = function() {
+                console.log("Transaction logged");
+            };
+
+            request.onerror = function() {
+                console.error("Error logging transaction");
+            };
+        }
+
+        openDB();
+      
+      function gotoCreate() {
+        var create = document.querySelector('#')
+      }
+    </script>
+</body>
+</html>
